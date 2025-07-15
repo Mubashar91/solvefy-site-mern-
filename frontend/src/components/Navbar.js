@@ -3,14 +3,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSun } from 'react-icons/fa'; // Icon for the button
 import { toast } from 'react-toastify';
+import { useTheme } from '../context/ThemeContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [headerItems, setHeaderItems] = useState([]);
   const [logo, setLogo] = useState(null);
-  const [isLightMode, setIsLightMode] = useState(true);
   const [loading, setLoading] = useState(true);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   // Get the current route using useLocation
   const location = useLocation();
@@ -71,14 +72,14 @@ const Navbar = () => {
   // Animation variants
   const navVariants = {
     scrolled: {
-      backgroundColor: isLightMode ? colors.light : colors.primary,
+      backgroundColor: !isDarkMode ? colors.light : colors.primary,
       boxShadow: `0 4px 20px rgba(0,0,0,0.08)`,
       paddingTop: '1rem',
       paddingBottom: '1rem',
       transition: { duration: 0.3 }
     },
     normal: {
-      backgroundColor: isLightMode ? colors.light : colors.primary,
+      backgroundColor: !isDarkMode ? colors.light : colors.primary,
       boxShadow: `0 4px 20px rgba(0, 0, 0, 0.1)`,
       paddingTop: '1.5rem',
       paddingBottom: '1.5rem',
@@ -180,8 +181,8 @@ const Navbar = () => {
                 <Link
                   to={item.link}
                   className={`font-semibold transition-colors ${
-                    isLightMode ? 'text-gray-800' : 'text-white'
-                  } hover:${isLightMode ? 'text-indigo-600' : 'text-emerald-300'}`}
+                    !isDarkMode ? 'text-gray-800' : 'text-white'
+                  } hover:${!isDarkMode ? 'text-indigo-600' : 'text-emerald-300'}`}
                 >
                   {item.text}
                 </Link>
@@ -191,9 +192,7 @@ const Navbar = () => {
 
           {/* Button with Icon on Right */}
           <motion.button
-            onClick={() => {
-              setIsLightMode(!isLightMode);  // Toggle light/dark mode
-            }}
+            onClick={toggleTheme}
             className="flex items-center justify-center p-3 rounded-lg ml-6 bg-gradient-to-r from-indigo-600 to-emerald-500 hover:from-indigo-700 hover:to-emerald-600 transition-all shadow-md"
             whileTap={{ scale: 0.95 }}
           >

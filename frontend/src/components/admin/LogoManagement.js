@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { FiUpload, FiImage, FiCheck, FiX } from 'react-icons/fi';
 
 const LogoManagement = () => {
   const [text, setText] = useState('');
@@ -10,6 +12,7 @@ const LogoManagement = () => {
   const [logoHeight, setLogoHeight] = useState(50);
   const [currentLogo, setCurrentLogo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     fetchCurrentLogo();
@@ -35,7 +38,11 @@ const LogoManagement = () => {
   };
 
   const handleFileChange = (e) => {
-    const selected = e.target.files[0];
+    const selected = e.target.files?.[0];
+    handleFile(selected);
+  };
+
+  const handleFile = (selected) => {
     if (!selected) return;
 
     // Validate file type
@@ -59,6 +66,23 @@ const LogoManagement = () => {
     reader.readAsDataURL(selected);
   };
 
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files[0];
+    handleFile(droppedFile);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -75,7 +99,7 @@ const LogoManagement = () => {
 
     try {
       setLoading(true);
-      const response = await axios.post('http://localhost:5000/api/header-settings', formData, {
+      await axios.post('http://localhost:5000/api/header-settings', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -95,116 +119,170 @@ const LogoManagement = () => {
     }
   };
 
-  const getLogoUrl = (logoPath) => {
-    if (!logoPath) return '';
-    // Check if the path is already a full URL
-    if (logoPath.startsWith('http')) return logoPath;
-    // Otherwise, construct the full URL
-    return `http://localhost:5000${logoPath}`;
-  };
-
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-6 text-center">Logo Management</h2>
-      
-      {/* Current Logo Display */}
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading...</p>
-        </div>
-      ) : currentLogo && currentLogo.logo ? (
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-4">Current Logo</h3>
-          <div className="flex items-center justify-center">
-            <img
-              src={getLogoUrl(currentLogo.logo)}
-              alt="Current Logo"
-              style={{ width: `${currentLogo.logoWidth || 100}px`, height: `${currentLogo.logoHeight || 50}px` }}
-              className="object-contain"
-              onError={(e) => {
-                console.error('Error loading image:', e);
-                toast.error('Failed to load logo image');
-              }}
-            />
-          </div>
-          <p className="text-center mt-2 text-gray-600">{currentLogo.text}</p>
-        </div>
-      ) : (
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg text-center">
-          <p className="text-gray-600">No logo uploaded yet</p>
-        </div>
-      )}
+    <div className="max-w-4xl mx-auto p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="bg-white rounded-2xl shadow-lg p-8"
+      >
+        <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Logo Management</h2>
+        
+        {/* Current Logo Display */}
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-center py-8"
+            >
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </motion.div>
+          ) : currentLogo?.logo ? (
+            <motion.div
+              key="logo"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mb-8 p-6 bg-gray-50 rounded-xl"
+            >
+              <h3 className="text-xl font-semibold text-gray-700 mb-4">Current Logo</h3>
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative group">
+                  <img
+                    src={`http://localhost:5000${currentLogo.logo}`}
+                    alt="Current Logo"
+                    style={{ width: `${currentLogo.logoWidth || 100}px`, height: `${currentLogo.logoHeight || 50}px` }}
+                    className="object-contain rounded-lg shadow-sm transition-transform group-hover:scale-105"
+                    onError={(e) => {
+                      console.error('Error loading image:', e);
+                      toast.error('Failed to load logo image');
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-lg"></div>
+                </div>
+                <p className="text-gray-600 font-medium">{currentLogo.text}</p>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-      {/* Upload Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Logo Text</label>
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Enter logo text"
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Upload New Logo</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            required
-            className="mt-1 block w-full"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+        {/* Upload Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Logo Text Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Logo Width (px)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Logo Text</label>
             <input
-              type="number"
-              value={logoWidth}
-              onChange={(e) => setLogoWidth(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Enter logo text"
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Logo Height (px)</label>
+          {/* File Drop Zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+            }`}
+          >
             <input
-              type="number"
-              value={logoHeight}
-              onChange={(e) => setLogoHeight(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              required
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
+            <div className="space-y-4">
+              <FiUpload className="mx-auto h-12 w-12 text-gray-400" />
+              <div className="text-gray-600">
+                <span className="font-medium">Click to upload</span> or drag and drop
+                <br />
+                SVG, PNG, JPG or GIF (max. 5MB)
+              </div>
+            </div>
           </div>
-        </div>
 
-        {previewUrl && (
-          <div className="text-center">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Preview</h3>
-            <img
-              src={previewUrl}
-              alt="Logo Preview"
-              style={{ width: `${logoWidth}px`, height: `${logoHeight}px` }}
-              className="mx-auto object-contain"
-            />
+          {/* Preview */}
+          <AnimatePresence>
+            {previewUrl && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-gray-50 rounded-lg p-6"
+              >
+                <h3 className="text-lg font-medium text-gray-700 mb-4">Preview</h3>
+                <div className="flex flex-col items-center space-y-4">
+                  <img
+                    src={previewUrl}
+                    alt="Logo Preview"
+                    style={{ width: `${logoWidth}px`, height: `${logoHeight}px` }}
+                    className="object-contain rounded-lg shadow-sm"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Dimensions Controls */}
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Width (px)</label>
+              <input
+                type="number"
+                value={logoWidth}
+                onChange={(e) => setLogoWidth(Number(e.target.value))}
+                min="1"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Height (px)</label>
+              <input
+                type="number"
+                value={logoHeight}
+                onChange={(e) => setLogoHeight(Number(e.target.value))}
+                min="1"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
-        >
-          {loading ? 'Uploading...' : 'Upload Logo'}
-        </button>
-      </form>
+          {/* Submit Button */}
+          <motion.button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-3 px-6 rounded-lg text-white font-medium transition-all ${
+              loading
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+            }`}
+            whileHover={{ scale: loading ? 1 : 1.02 }}
+            whileTap={{ scale: loading ? 1 : 0.98 }}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Uploading...
+              </span>
+            ) : (
+              'Upload Logo'
+            )}
+          </motion.button>
+        </form>
+      </motion.div>
     </div>
   );
 };
